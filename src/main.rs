@@ -1,3 +1,5 @@
+use projecteuler::largestproduct::largest_product;
+
 fn main() {
-    println!("Hello, world!");
+    largest_product();
 }
