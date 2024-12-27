@@ -45,6 +45,7 @@ mod tests {
     #[test]
     fn test_sieve_25() {
         let primes = sieve(25);
+
         println!("{:?}", primes);
         assert_eq!(primes, vec![2, 3, 5, 7, 11, 13, 17, 19, 23]);
     }
