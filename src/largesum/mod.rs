@@ -1,4 +1,8 @@
-use std::{fmt::Display, iter::zip, ops::Add};
+use std::{
+    fmt::Display,
+    iter::zip,
+    ops::{Add, Mul},
+};
 
 const NUMBERS: &str = "37107287533902102798797998220837590246510135740250
 46376937677490009712648124896970078050417018260538
@@ -106,8 +110,8 @@ pub fn large_sum(nums: Option<String>) -> BigInt {
     let num = nums
         .unwrap_or(NUMBERS.to_string())
         .lines()
-        .map(BigInt::from_str)
-        .fold(BigInt::from_str("0"), |acc, n| acc + n);
+        .map(BigInt::from_string)
+        .fold(BigInt::from_string("0"), |acc, n| acc + n);
 
     println!("DEBUG: {num}");
 
@@ -117,7 +121,7 @@ pub fn large_sum(nums: Option<String>) -> BigInt {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BigInt {
     sign: Sign,
-    digits: Vec<u8>,
+    digits: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -127,26 +131,74 @@ pub enum Sign {
 }
 
 impl BigInt {
-    pub fn from_str(s: &str) -> Self {
-        let mut chars = s.chars();
-        let sign = match chars.clone().skip_while(|c| c.is_whitespace()).next() {
-            Some('-') => {
-                chars.next();
-                Sign::Negative
-            }
-            _ => Sign::Positive,
-        };
-
-        let mut digits = chars
-            .map(|c| c.to_digit(10).expect("Invalid digit") as u8)
-            .collect::<Vec<_>>();
-
-        digits.reverse();
-
-        Self { sign, digits }
+    pub fn from_u64(d: u64) -> Self {
+        Self {
+            sign: Sign::Positive,
+            digits: vec![d],
+        }
     }
 
-    fn add_magnitude(a: &[u8], b: &[u8]) -> Vec<u8> {
+    pub fn mult_by_u64(&mut self, d: u64) -> Self {
+        let mut n = Self::from_u64(d);
+        self.clone() * n
+    }
+
+    pub fn add_u64(&mut self, d: u64) -> Self {
+        let n = Self::from_u64(d);
+        self.clone() + n
+    }
+
+    pub fn from_string(s: &str) -> Self {
+        let mut result = Self::from_u64(0);
+        let chunk_size = 19;
+        let radix = 10u64.pow(chunk_size);
+
+        for chunk in s.as_bytes().chunks(chunk_size as usize) {
+            let val: u64 = String::from_utf8(chunk.to_vec())
+                .unwrap_or("".to_string())
+                .parse()
+                .unwrap();
+
+            println!("{val}");
+
+            result = result.mult_by_u64(radix);
+            result = result.add_u64(val);
+        }
+
+        Self {
+            sign: Sign::Positive,
+            digits: result.digits,
+        }
+    }
+
+    fn multiply_magnitude(a: &[u64], b: &[u64]) -> Vec<u64> {
+        let mut result: Vec<u64> = vec![0u64; a.len() + b.len()];
+
+        for i in 0..a.len() {
+            let mut carry = 0u128;
+            let ai = a[i] as u128;
+
+            for j in 0..b.len() {
+                let bj = b[j] as u128;
+
+                let product = ai * bj + (result[i + j] as u128) + carry;
+
+                result[i + j] = product as u64;
+
+                carry = product >> 64;
+
+                println!("{ai} * {bj} + {carry}");
+            }
+
+            if carry > 0 {
+                result[i + b.len()] += carry as u64;
+            }
+        }
+
+        result
+    }
+
+    fn add_magnitude(a: &[u64], b: &[u64]) -> Vec<u64> {
         let mut result = Vec::new();
         let mut carry = 0;
 
@@ -169,23 +221,94 @@ impl BigInt {
     }
 
     fn to_string_utf8(&self) -> String {
-        let mut bytes = Vec::with_capacity(self.digits.len() + 1);
+        //let mut bytes = Vec::with_capacity(self.digits.len() + 1);
 
-        if self.sign == Sign::Negative {
-            bytes.push(b'-');
-        }
+        //        if self.sign == Sign::Negative {
+        //            bytes.push(b'-');
+        //        }
 
-        for &d in self.digits.iter().rev() {
-            bytes.push(d + b'0');
-        }
+        //for &d in self.digits.iter().rev() {
+        //    bytes.push(d + b'0');
+        //}
 
-        String::from_utf8(bytes).expect("Error converting digits to string")
+        //String::from_utf8(bytes).expect("Error converting digits to string")
+        unimplemented!("Impl to string")
     }
 }
 
 impl Display for BigInt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.to_string_utf8().as_str())
+    }
+}
+
+impl Mul<&BigInt> for BigInt {
+    type Output = BigInt;
+
+    fn mul(self, rhs: &Self) -> Self::Output {
+        match (self.sign, rhs.sign) {
+            (Sign::Positive, Sign::Positive) => BigInt {
+                sign: Sign::Positive,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Negative, Sign::Negative) => BigInt {
+                sign: Sign::Positive,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Negative, Sign::Positive) => BigInt {
+                sign: Sign::Negative,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Positive, Sign::Negative) => BigInt {
+                sign: Sign::Negative,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+        }
+    }
+}
+
+impl Mul for BigInt {
+    type Output = BigInt;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self.sign, rhs.sign) {
+            (Sign::Positive, Sign::Positive) => BigInt {
+                sign: Sign::Positive,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Negative, Sign::Negative) => BigInt {
+                sign: Sign::Positive,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Negative, Sign::Positive) => BigInt {
+                sign: Sign::Negative,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Positive, Sign::Negative) => BigInt {
+                sign: Sign::Negative,
+                digits: BigInt::multiply_magnitude(&self.digits, &rhs.digits),
+            },
+        }
+    }
+}
+
+impl Add<&BigInt> for BigInt {
+    type Output = BigInt;
+
+    fn add(self, rhs: &Self) -> Self::Output {
+        match (self.sign, rhs.sign) {
+            (Sign::Positive, Sign::Positive) => BigInt {
+                sign: Sign::Positive,
+                digits: BigInt::add_magnitude(&self.digits, &rhs.digits),
+            },
+            (Sign::Negative, Sign::Negative) => BigInt {
+                sign: Sign::Negative,
+                digits: BigInt::add_magnitude(&self.digits, &rhs.digits),
+            },
+
+            // subtract for different signs
+            _ => unimplemented!("Implement subtract logic here!"),
+        }
     }
 }
 
@@ -211,6 +334,7 @@ impl Add for BigInt {
 
 #[cfg(test)]
 mod test {
+
     use crate::largesum::{BigInt, large_sum};
 
     #[test]
@@ -220,7 +344,7 @@ mod test {
 
         println!("{s} -> num: {sum}");
 
-        assert_eq!(sum, BigInt::from_str("222"));
+        assert_eq!(sum, BigInt::from_string("222"));
 
         panic!()
     }
@@ -229,6 +353,28 @@ mod test {
     fn test_large_sum() {
         let sum = large_sum(None);
         println!("{}", sum);
+
+        panic!()
+    }
+
+    #[test]
+    fn test_large_multiply() {
+        let a = BigInt::from_u64(123);
+        let b = BigInt::from_u64(321);
+        let product = a.clone() * b.clone();
+
+        println!("{:?} {:?} = {:?}", a, b, product);
+
+        panic!()
+    }
+
+    #[test]
+    fn test_large_multiply_str() {
+        let a = BigInt::from_string("10");
+        let b = BigInt::from_string("10");
+        let product = a.clone() * b.clone();
+
+        println!("{:?} {:?} = {:?}", a, b, product);
 
         panic!()
     }
