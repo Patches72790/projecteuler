@@ -1,6 +1,7 @@
 #include "bigint.h"
 #include "stdio.h"
 #include "util.h"
+#include <cstddef>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -21,6 +22,21 @@ void MakeBigInt(BigInt *n, char *num) {
   }
 }
 
+BigInt factorial(unsigned int n) {
+  BigInt result;
+  MakeBigInt(&result, "1");
+
+  if (n <= 1) {
+    return result;
+  }
+
+  for (unsigned int i = 2; i <= n; i++) {
+    result = multiply_by_int(&result, i);
+  }
+
+  return result;
+}
+
 BigInt add(BigInt *a, BigInt *b) {
   BigInt res;
   int max_s = (a->size > b->size ? a->size : b->size);
@@ -39,6 +55,47 @@ BigInt add(BigInt *a, BigInt *b) {
   }
 
   return res;
+}
+
+void SetToUint(BigInt *bi, unsigned int n) {
+  for (int i = 0; i < bi->size; i++) {
+    bi->digits[i] = 0;
+  }
+
+  // TODO!
+  bi->digits[0] = n;
+  bi->size = 1;
+}
+
+void mult_by_int_inplace(BigInt *result, int n) {
+  int old_size = result->size;
+  result->size = 0;
+
+  int carry = 0;
+  for (int i = 0; i < old_size || carry > 0; i++) {
+    unsigned long long current = result->digits[i] * n + carry;
+
+    result->digits[i] = current % 10;
+    carry = current / 10;
+    result->size = i + 1;
+  }
+}
+
+void factorial_inplace(BigInt *a, int n) {
+  SetToUint(a, 1);
+
+  for (int i = 2; i <= n; i++) {
+    mult_by_int_inplace(a, i);
+  }
+}
+
+BigInt multiply_by_int(BigInt *a, int n) {
+  char str[32];
+  sprintf(str, "%d", n);
+  BigInt b;
+  MakeBigInt(&b, str);
+
+  return multiply(a, &b);
 }
 
 BigInt multiply(BigInt *a, BigInt *b) {
