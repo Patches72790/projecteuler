@@ -1,12 +1,22 @@
 #include "bigint.h"
 #include "stdio.h"
 #include "util.h"
-#include <cstddef>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+void GrowBigInt(BigInt *n) {
+  int *digs = realloc(n->digits, n->capacity * 2 * sizeof(int));
+
+  if (digs == NULL)
+    panic("Error expanding BigInt size");
+
+  // Update new digits
+  n->digits = digs;
+  n->capacity *= 2;
+}
 
 void MakeBigInt(BigInt *n, char *num) {
   n->size = strlen(num);
@@ -68,20 +78,23 @@ void SetToUint(BigInt *bi, unsigned int n) {
 }
 
 void mult_by_int_inplace(BigInt *result, int n) {
-  int old_size = result->size;
-  result->size = 0;
+  unsigned long long carry = 0;
+  for (int i = 0; i < result->size || carry > 0; i++) {
+    // if reached capacity
+    if (i == result->capacity) {
+      GrowBigInt(result);
+    }
 
-  int carry = 0;
-  for (int i = 0; i < old_size || carry > 0; i++) {
-    unsigned long long current = result->digits[i] * n + carry;
+    int current_digit = (i < result->size ? result->digits[i] : 0);
+    unsigned long long product = (unsigned long long)current_digit * n + carry;
 
-    result->digits[i] = current % 10;
-    carry = current / 10;
+    result->digits[i] = product % 10;
+    carry = product / 10;
     result->size = i + 1;
   }
 }
 
-void factorial_inplace(BigInt *a, int n) {
+void factorial_inplace(BigInt *a, unsigned int n) {
   SetToUint(a, 1);
 
   for (int i = 2; i <= n; i++) {

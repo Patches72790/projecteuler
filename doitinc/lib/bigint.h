@@ -13,7 +13,11 @@ BigInt multiply(BigInt *a, BigInt *b);
 
 BigInt multiply_by_int(BigInt *a, int n);
 
+BigInt multiply_by_int_inplace(BigInt *a, int n);
+
 BigInt factorial(unsigned int n);
+
+void factorial_inplace(BigInt *result, unsigned int n);
 
 void PrintBigInt(BigInt *n);
 

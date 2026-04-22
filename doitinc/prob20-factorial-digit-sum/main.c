@@ -3,11 +3,11 @@
 #include <stdlib.h>
 
 void factorial_digits_sum() {
-  BigInt result = factorial(100);
+  BigInt result;
+
+  factorial_inplace(&result, 100);
 
   __auto_type digits = result.digits;
-
-  // PrintBigInt(&result);
 
   int sum = 0;
   for (int i = 0; i < result.size; i++) {
